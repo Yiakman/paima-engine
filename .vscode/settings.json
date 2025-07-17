@@ -2,6 +2,7 @@
   "deno.enable": true,
   "deno.lint": true,
   "editor.formatOnSave": true,
+  "workbench.colorTheme": "Solarized Dark",
   "editor.defaultFormatter": "denoland.vscode-deno",
   "[typescript]": {
     "editor.defaultFormatter": "denoland.vscode-deno"

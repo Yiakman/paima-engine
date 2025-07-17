@@ -16,6 +16,8 @@ const ExternalComponents = {
   DOLOS: "dolos",
   MIDNIGHT_NODE: "midnight-node",
   MIDNIGHT_INDEXER: "midnight-indexer",
+  MIDNIGHT_PROOF_SERVER: "midnight-proof-server",
+  MIDNIGHT_CONTRACT: "midnight-contract",
   AVAIL_NODE: "avail-node",
   AVAIL_CLIENT: "avail-light-client",
 };
@@ -27,6 +29,7 @@ const ToolsComponents = {
   HARDHA_WAIT: "hardhat-wait",
   MIDNIGHT_NODE_WAIT: "midnight-node-wait",
   MIDNIGHT_INDEXER_WAIT: "midnight-indexer-wait",
+  MIDNIGHT_PROOF_SERVER_WAIT: "midnight-proof-server-wait",
   AVAIL_NODE_WAIT: "avail-node-wait",
   AVAIL_CLIENT_WAIT: "avail-light-client-wait",
   COLLECTOR_WAIT: "collector-wait",

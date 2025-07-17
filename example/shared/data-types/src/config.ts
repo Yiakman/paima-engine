@@ -52,6 +52,14 @@ export const localhostConfig = new ConfigBuilder()
         nodeUrl: "http://127.0.0.1:10000", // yaci-devkit default URL
         network: "yaci",
       })
+      .addNetwork({
+        name: "midnight",
+        type: ConfigNetworkType.MIDNIGHT,
+        genesisHash:
+          "0x0000000000000000000000000000000000000000000000000000000000000001",
+        networkId: 0,
+        nodeUrl: "http://127.0.0.1:9955",
+      })
   )
   .buildDeployments((builder) =>
     builder.addDeployment(
@@ -69,7 +77,7 @@ export const localhostConfig = new ConfigBuilder()
         startBlockHeight: 1,
         pollingInterval: 500, // poll quickly to react fast
       }))
-      .addParallel(
+      /*.addParallel(
         (networks) => networks.evmParallel,
         (network, deployments) => ({
           name: "parallelEvmRPC",
@@ -80,14 +88,25 @@ export const localhostConfig = new ConfigBuilder()
           startBlockHeight: 1 as BlockNumber,
           confirmationDepth: 2, // TODO: test this
         }),
-      )
-      .addParallel(
+      )*/
+      /*.addParallel(
         (networks) => networks.yaci,
         (network, deployments) => ({
           name: "parallelUtxoRpc",
           type: ConfigSyncProtocolType.CARDANO_UTXORPC_PARALLEL,
           rpcUrl: "http://127.0.0.1:50051", // dolos utxorpc address
           startSlot: 1,
+        }),
+      )*/
+      .addParallel(
+        (networks) => networks.midnight,
+        (network, deployments) => ({
+          name: "parallelMidnight",
+          type: ConfigSyncProtocolType.MIDNIGHT_PARALLEL,
+          startBlockHeight: 1,
+          pollingInterval: 1000,
+          indexer: "http://127.0.0.1:8088",
+          indexerWs: "ws://127.0.0.1:8088",
         }),
       )
   )
@@ -117,6 +136,17 @@ export const localhostConfig = new ConfigBuilder()
             "PaimaGameInteraction(address,bytes,uint256)",
           ),
           scheduledPrefix: stfInputs.paimaSubmitGameInput,
+        }),
+      )
+      .addPrimitive(
+        (syncProtocols) => syncProtocols.parallelMidnight,
+        (network, deployments, syncProtocol) => ({
+          name: "MidnightContractState",
+          type: ConfigPrimitiveType.MidnightContractState,
+          startBlockHeight: 0,
+          contractAddress:
+            "0200613fa7533ddfdcc3a5b98d498ded9c1937f0b480f22b30e6e7a033a090d51fd7",
+          scheduledPrefix: "midnightContractState",
         }),
       )
   )

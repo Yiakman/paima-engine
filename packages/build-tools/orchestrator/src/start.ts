@@ -100,6 +100,12 @@ export async function start(
       startProcess[ComponentNames.DOLOS](),
       startProcess[ComponentNames.AVAIL_CLIENT](),
       startProcess[ComponentNames.MIDNIGHT_INDEXER](),
+      startProcess[ComponentNames.MIDNIGHT_PROOF_SERVER](),
+    ]);
+
+    // Start the contracts
+    await Promise.all([
+      startProcess[ComponentNames.MIDNIGHT_CONTRACT](),
     ]);
 
     // Start the main process
@@ -315,6 +321,51 @@ export const startProcess: Record<
     }).process.status;
 
     return midnightIndexer;
+  },
+  [ComponentNames.MIDNIGHT_PROOF_SERVER]: async (): Promise<
+    ProcessComponent
+  > => {
+    const midnightProofServer = $({
+      args: [
+        "task",
+        "-f",
+        "@example/midnight-contracts",
+        "midnight-proof-server:start",
+      ],
+      log: logHandler,
+      component: ComponentNames.MIDNIGHT_PROOF_SERVER,
+      abortController: abortControllers.system,
+    });
+    void midnightProofServer.process.status; // need to await sub-service start below
+
+    await $({
+      args: [
+        "task",
+        "-f",
+        "@example/midnight-contracts",
+        "midnight-proof-server:wait",
+      ],
+      component: ComponentNames.MIDNIGHT_PROOF_SERVER_WAIT,
+      abortController: abortControllers.noncritical,
+    }).process.status;
+
+    return midnightProofServer;
+  },
+  [ComponentNames.MIDNIGHT_CONTRACT]: async (): Promise<ProcessComponent> => {
+    const midnightContract = $({
+      args: [
+        "task",
+        "-f",
+        "@example/midnight-contracts",
+        "midnight-contract:deploy",
+      ],
+      log: logHandler,
+      component: ComponentNames.MIDNIGHT_CONTRACT,
+      abortController: abortControllers.system,
+    });
+    await midnightContract.process.status;
+
+    return midnightContract;
   },
   [ComponentNames.AVAIL_NODE]: async (): Promise<ProcessComponent> => {
     const availNode = $({

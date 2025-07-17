@@ -58,6 +58,7 @@ export class EvmFetcher
     >,
     readonly client: PublicClient<any, Chain, any, any>,
   ) {
+    console.log("MIDNIGHT 🌒 EvmFetcher", JSON.stringify(config, null, 2));
     super(config.syncProtocol.name);
   }
 
@@ -66,6 +67,7 @@ export class EvmFetcher
     data: Input,
     rootConversion: RootConversion<Output, RootOutput, RootPage>,
   ): Operation<DataFetched<Output, Page, RootPage>> {
+    console.log("MIDNIGHT 🌒 readData", data);
     const isParallel =
       this.config.syncProtocolType === ConfigSyncProtocolType.EVM_RPC_PARALLEL;
     const pageFetcher = (() => {

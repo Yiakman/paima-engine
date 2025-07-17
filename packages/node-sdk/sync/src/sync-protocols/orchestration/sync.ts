@@ -37,7 +37,7 @@ export function* startSync(
       log.remote(
         ComponentNames.PAIMA_SYNC,
         [...state.getNamespace(), "data"],
-        SeverityNumber.TRACE,
+        SeverityNumber.INFO,
         (log) => log(result.data),
       );
       yield* iState.updateState(input, result.data);

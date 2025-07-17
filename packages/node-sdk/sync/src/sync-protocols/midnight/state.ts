@@ -1,15 +1,13 @@
 import { call, type Operation } from "effection";
-import { type PoolClient } from "pg";
 import { bound, type TimestampMs } from "@paima/utils";
+import { type PoolClient } from "npm:pg";
 import { type LastPage, SyncState } from "../base/state.ts";
 import type { RootOutput, RootPage } from "../types.ts";
 import type { Input, Output, Page } from "./types.ts";
 import { gqlQuery, pageRelation } from "./types.ts";
 import type { MidnightFetcher } from "./fetcher.ts";
-import { genInputRange } from "../common/page-helpers.ts";
 import type { ConfigNetworkType, SyncProtocolWithNetwork } from "@paima/config";
 import { getPage } from "@paima/db";
-import { toMsTimestamp } from "../evm/types.ts";
 
 type LatestBlock = {
   block: {
