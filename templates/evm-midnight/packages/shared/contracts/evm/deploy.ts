@@ -22,11 +22,11 @@ type Deployment = {
 const myDeployments: Deployment[] = [
   {
     module: Erc20DevModule,
-    network: "evmMainHttp",
+    network: "arbitrumSepolia",
   },
   {
     module: PaimaL2ContractModule,
-    network: "evmMainHttp",
+    network: "arbitrumSepolia",
     parameters: {
       PaimaL2ContractModule: {
         owner: "0xEFfE522D441d971dDC7153439a7d10235Ae6301f",
@@ -36,15 +36,7 @@ const myDeployments: Deployment[] = [
   },
   {
     module: Erc721DevModule,
-    network: "evmMainHttp",
-  },
-  {
-    module: Erc20DevModule,
-    network: "evmParallelHttp",
-  },
-  {
-    module: Erc721DevModule,
-    network: "evmParallelHttp",
+    network: "arbitrumSepolia",
   },
 ] as const;
 

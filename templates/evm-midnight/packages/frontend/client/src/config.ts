@@ -9,12 +9,14 @@ const BASE_URL_API = `http://127.0.0.1:${ENV.EFFECTSTREAM_API_PORT}`;
 const BASE_URL_BATCHER = `http://localhost:${ENV.BATCHER_PORT}`;
 const BASE_URL_DOCS = `http://127.0.0.1:${ENV.DOCS_PORT}`;
 
+const isTestnet = (import.meta.env as any).MODE === "testnet" || (import.meta.env as any).VITE_MODE === "testnet";
+
 // These can be overridden by env vars if needed
-export const BASE_URL_MIDNIGHT_INDEXER = import.meta.env.VITE_MIDNIGHT_INDEXER_HTTP || `http://127.0.0.1:8088`;
-export const BASE_WS_MIDNIGHT_INDEXER = import.meta.env.VITE_MIDNIGHT_INDEXER_WS || `ws://127.0.0.1:8088`;
-export const BASE_URL_MIDNIGHT_NODE = import.meta.env.VITE_MIDNIGHT_NODE_HTTP || `http://127.0.0.1:9944`;
-export const BASE_URL_PROOF_SERVER = import.meta.env.VITE_MIDNIGHT_PROOF_SERVER_URL || `http://127.0.0.1:6300`;
-export const MIDNIGHT_NETWORK_ID = import.meta.env.VITE_MIDNIGHT_NETWORK_ID || "undeployed";
+export const BASE_URL_MIDNIGHT_INDEXER = (import.meta.env as any).VITE_MIDNIGHT_INDEXER_HTTP || `http://127.0.0.1:8088`;
+export const BASE_WS_MIDNIGHT_INDEXER = (import.meta.env as any).VITE_MIDNIGHT_INDEXER_WS || `ws://127.0.0.1:8088`;
+export const BASE_URL_MIDNIGHT_NODE = (import.meta.env as any).VITE_MIDNIGHT_NODE_HTTP || `http://127.0.0.1:9944`;
+export const BASE_URL_PROOF_SERVER = (import.meta.env as any).VITE_MIDNIGHT_PROOF_SERVER_URL || `http://127.0.0.1:6300`;
+export const MIDNIGHT_NETWORK_ID = (import.meta.env as any).VITE_MIDNIGHT_NETWORK_ID || (isTestnet ? "preview" : "undeployed");
 
 export const getMidnightNodeUrl = async (): Promise<string> => {
   return BASE_URL_MIDNIGHT_NODE;
@@ -42,8 +44,12 @@ export const DOCUMENTATION_URL =
   `https://effectstream.github.io/docs/`;
 
 const RPC_EFFECTSTREAM = `http://127.0.0.1:${ENV.EFFECTSTREAM_API_PORT}/rpc/evm`;
-const RPC_ARBITRUM = "http://127.0.0.1:8545/rpc/evm";
-// TODO: This should passed through the config
+export const RPC_ARBITRUM = isTestnet
+  ? (import.meta.env as any).VITE_ARBITRUM_SEPOLIA_RPC || "http://127.0.0.1:8545/rpc/evm"
+  : "http://127.0.0.1:8545/rpc/evm";
+const CHAIN_ID = isTestnet ? 421614 : 31337;
+const CHAIN_NAME = isTestnet ? "Arbitrum Sepolia" : "Arbitrum";
+// TODO: This should passed through config
 // Initial configuration for each chain
 export const initialChainConfigs = {
   Effectstream: {
@@ -60,7 +66,7 @@ export const initialChainConfigs = {
   },
   evmMain: {
     type: "EVM",
-    name: "Arbitrum",
+    name: CHAIN_NAME,
     blockTime: 300,
     color: "#4caf50",
     blocks: [],

@@ -21,6 +21,7 @@ import { midnightNetworkConfig } from "@paimaexample/midnight-contracts/midnight
 const mainSyncProtocolName = "mainNtp";
 let launchStartTime: number | undefined;
 const dbConn = getConnection();
+const contractAddressBook = contractAddressesEvmMain() as any;
 try {
   const result = await dbConn.query(`
     SELECT * FROM effectstream.sync_protocol_pagination 
@@ -72,7 +73,7 @@ export const config = new ConfigBuilder()
         (networks) => networks.evmMain,
         (_network) => ({
           name: "Erc721DevModule#Erc721Dev",
-          address: contractAddressesEvmMain()
+          address: contractAddressBook
             .chain31337["Erc721DevModule#Erc721Dev"],
         }),
       )
@@ -116,7 +117,7 @@ export const config = new ConfigBuilder()
           name: "Arbitrum_ERC721",
           type: PrimitiveTypeEVMERC721,
           startBlockHeight: 0,
-          contractAddress: contractAddressesEvmMain()
+          contractAddress: contractAddressBook
             .chain31337["Erc721DevModule#Erc721Dev"],
           stateMachinePrefix: "transfer-assets",
         })

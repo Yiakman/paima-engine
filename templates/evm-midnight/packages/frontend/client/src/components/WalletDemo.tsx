@@ -6,19 +6,22 @@ import {
   http,
   type WalletClient,
 } from "viem";
-import { hardhat } from "viem/chains";
+import { hardhat, arbitrumSepolia } from "viem/chains";
+import { privateKeyToAccount } from "viem/accounts";
 import { useWallet } from "../contexts/WalletContext.tsx";
 import {
-  connectMidnightWallet,
   connectToContract,
   fetchCurrentCounterState,
   incrementCounterValue,
+  configureProviders,
+  WalletConfig,
 } from "../increment.ts";
 import { take, timeout } from "rxjs/operators";
-import { BATCHER_ENDPOINT } from "../config.ts";
+import { BATCHER_ENDPOINT, RPC_ARBITRUM } from "../config.ts";
 import { erc721dev } from "@example-evm-midnight/evm-contracts";
 import { WalletModal } from "./WalletModal.tsx";
 import { BlockWatcher } from "../hooks/BlockWatcher.ts";
+import { paimaEngineConfig } from "../PaimaEngineConfig.ts";
 
 interface MidnightWallet {
   address: string;
@@ -272,9 +275,11 @@ export function WalletDemo() {
     isConnected: walletConnected,
     address: walletAddress,
     wallet,
+    midnightWallet: midnightContextWallet,
     isModalOpen,
     openModal,
     closeModal,
+    connectEvmWallet,
   } = useWallet();
 
   const [midnightWallet, setMidnightWallet] = useState<MidnightWallet | null>(
@@ -304,8 +309,15 @@ export function WalletDemo() {
     WalletClient | null
   >(null);
 
-  // ERC721 contract address - moved here to be accessible to both sections
-  const erc721Address = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
+  // ERC721 contract address - use deployed address based on environment
+  const isTestnet = (import.meta.env as any).MODE === "testnet" || (import.meta.env as any).VITE_MODE === "testnet";
+  const erc721Address = isTestnet
+    ? "0x3050DA616A9566322ce66a7499fecD0124f9c8B9"
+    : "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+
+  // Local wallet private key for signing on Arbitrum Sepolia
+  // Only use this for local wallet, not browser wallets
+  const LOCAL_WALLET_PRIVATE_KEY = "0x4bbbf85ce3377467afe5d46f804f221813b2bb87f24d81f60f1fcdbf7cbf4356";
 
   // Generate random token name
   const generateRandomTokenName = () => {
@@ -365,25 +377,43 @@ export function WalletDemo() {
     const initHardhatWalletClient = () => {
       if (walletConnected && walletAddress) {
         try {
+          const isTestnet = (import.meta.env as any).MODE === "testnet" || (import.meta.env as any).VITE_MODE === "testnet";
+          const rpcUrl = isTestnet
+            ? RPC_ARBITRUM
+            : "http://127.0.0.1:8545";
+          const chain = isTestnet ? arbitrumSepolia : hardhat;
+
           console.log(
-            "🔗 [HARDHAT] Creating hardhat wallet client for:",
+            `🔗 [${isTestnet ? 'ARBITRUM' : 'HARDHAT'}] Creating wallet client for:`,
             walletAddress,
           );
 
-          const client = createWalletClient({
+          let client: WalletClient;
+          
+          // For Arbitrum Sepolia, local wallet not supported with Alchemy RPC
+          // Local wallet tries to use eth_sendTransaction which Alchemy doesn't support
+          // Please use MetaMask browser wallet instead for Arbitrum Sepolia
+          if (isTestnet && wallet?.metadata?.name === "thirdweb.localwallet") {
+            console.log("❌ [ERROR] Local wallet not supported on Arbitrum Sepolia");
+            console.log("❌ [ERROR] Please use MetaMask browser wallet instead");
+            console.log("❌ [ERROR] Alchemy only supports eth_sendRawTransaction, not eth_sendTransaction");
+            return; // Skip wallet creation
+          }
+
+          client = createWalletClient({
             account: walletAddress as `0x${string}`,
-            chain: hardhat,
-            transport: http("http://127.0.0.1:8545"), // Hardhat local node
+            chain,
+            transport: http(rpcUrl),
           });
 
           setHardhatWalletClient(client);
 
           console.log(
-            "✅ [HARDHAT] Hardhat wallet client created successfully",
+            `✅ [${isTestnet ? 'ARBITRUM' : 'HARDHAT'}] Wallet client created successfully`,
           );
         } catch (error) {
           console.error(
-            "❌ [HARDHAT] Failed to create hardhat wallet client:",
+            `❌ [${(import.meta.env as any).MODE}] Failed to create wallet client:`,
             error,
           );
         }
@@ -468,32 +498,37 @@ export function WalletDemo() {
     setIsConnectingMidnight(true);
 
     try {
-      console.log("🌙 [NETWORK] Connecting to Midnight wallet...");
+      console.log("🌙 [NETWORK] Connecting to Midnight wallet via context...");
       showNotification(
         "info",
         "Connecting to Midnight",
         "Building wallet and connecting to contract...",
       );
 
-      // Connect to Midnight wallet
-      const { wallet, providers } = await connectMidnightWallet();
-
-      // Get wallet address - it should already be available from the connection process
-      let walletAddress = "Unknown";
-      try {
-        // Try to get the current state with a timeout
-        const state = await wallet.state().pipe(
-          take(1),
-          timeout(5000), // 5 second timeout
-        ).toPromise();
-        walletAddress = state?.address || "Unknown";
-      } catch (error) {
-        console.warn(
-          "Could not get wallet address immediately, using fallback",
-        );
-        // Fallback: try to get address from wallet properties if available
-        walletAddress = (wallet as any).address || "Unknown";
+      // Connect to Midnight wallet using the shared context logic
+      const isTestnet = (import.meta.env as any).MODE === "testnet" || (import.meta.env as any).VITE_MODE === "testnet";
+      const midnightResponse = await connectEvmWallet({ 
+        mode: 2,
+        networkId: isTestnet ? "preview" : "undeployed"
+      });
+      
+      if (!midnightResponse.success || !midnightResponse.result) {
+        throw new Error(midnightResponse.errorMessage || "Failed to connect to Midnight wallet");
       }
+
+      const connectedAPI = midnightResponse.result.provider;
+      const walletAddress = midnightResponse.result.walletAddress;
+
+      console.log("📊 Getting service configuration...");
+      const serviceUriConfig = await connectedAPI.getConfiguration();
+      const config = new WalletConfig(serviceUriConfig);
+
+      console.log("🔑 Getting shielded addresses...");
+      const shieldedAddresses = await connectedAPI.getShieldedAddresses();
+      const { coinPublicKey, encryptionPublicKey } = shieldedAddresses as any;
+
+      console.log("⚙️ Configuring providers...");
+      const providers = await configureProviders(connectedAPI, config, coinPublicKey, encryptionPublicKey);
 
       console.log("🔗 [NETWORK] Joining contract...");
       showNotification(
@@ -579,10 +614,16 @@ export function WalletDemo() {
       showNotification(
         "info",
         "Minting NFT",
-        "Calling mint function on ERC721 contract via Hardhat...",
+        `Calling mint function on ERC721 contract via ${(import.meta.env as any).VITE_MODE === "testnet" ? "Arbitrum Sepolia" : "Hardhat"}...`,
       );
 
-      // Call the mint function on the ERC721 contract using hardhat wallet client
+      const isTestnet = (import.meta.env as any).MODE === "testnet" || (import.meta.env as any).VITE_MODE === "testnet";
+      const rpcUrl = isTestnet
+        ? RPC_ARBITRUM
+        : "http://127.0.0.1:8545";
+      const chain = isTestnet ? arbitrumSepolia : hardhat;
+
+      // Call mint function on ERC721 contract using hardhat wallet client
       if (!hardhatWalletClient) {
         throw new Error("Viem wallet not found");
       }
@@ -591,29 +632,29 @@ export function WalletDemo() {
         abi: erc721dev.abi,
         functionName: "mint",
         args: [walletAddress as `0x${string}`, tokenId],
-        chain: hardhat,
+        chain: chain,
         account: walletAddress as `0x${string}`,
       });
 
       console.log("✅ [CONTRACT] ERC721 mint transaction hash:", mintTxHash);
 
       const publicClient = createPublicClient({
-        chain: hardhat,
-        transport: http(),
+        chain: chain,
+        transport: http(rpcUrl),
       });
 
-      const transaction = await publicClient.waitForTransactionReceipt({
-        hash: mintTxHash,
-      });
-      console.log("🎉 [CONTRACT] Transaction receipt:", transaction);
-      const blockNumber: bigint = transaction.blockNumber;
+        const transaction = await publicClient.waitForTransactionReceipt({
+          hash: mintTxHash,
+        });
+        console.log("🎉 [CONTRACT] Transaction receipt:", transaction);
+        const blockNumber: bigint = transaction.blockNumber;
 
-      await BlockWatcher.Instance.waitForBlock("mainEvmRPC", blockNumber);
+        await BlockWatcher.Instance.waitForBlock(isTestnet ? "parallelEvmRPC_fast" : "mainEvmRPC", blockNumber);
 
       showNotification(
         "success",
-        "NFT Minted on Hardhat",
-        `Token minted successfully on Hardhat chain! Tx: ${
+        `NFT Minted on ${(isTestnet ? "Arbitrum Sepolia" : "Hardhat")}`,
+        `Token minted successfully on ${(isTestnet ? "Arbitrum Sepolia" : "Hardhat")} chain! Tx: ${
           mintTxHash.slice(0, 10)
         }... Waiting for API to reflect the new token...`,
       );
@@ -875,15 +916,15 @@ export function WalletDemo() {
               </h3>
 
               <div className="wallet-info">
-                {midnightWallet?.connected
+                {midnightWallet?.connected || midnightContextWallet
                   ? (
                     <>
                       <div className="current-wallet">
                         <span className="wallet-label">Current Wallet:</span>
                         <span className="wallet-address midnight-address">
-                          {midnightWallet.address
-                            ? `${midnightWallet.address.slice(0, 8)}...${
-                              midnightWallet.address.slice(-6)
+                          {(midnightWallet?.address || midnightContextWallet?.walletAddress)
+                            ? `${(midnightWallet?.address || midnightContextWallet?.walletAddress).slice(0, 8)}...${
+                              (midnightWallet?.address || midnightContextWallet?.walletAddress).slice(-6)
                             }`
                             : "Unknown address"}
                         </span>
@@ -903,6 +944,11 @@ export function WalletDemo() {
                         }}
                       >
                         ✅ Connected
+                        {midnightWallet?.connected && (
+                           <span style={{ fontSize: '0.8em', display: 'block', opacity: 0.8 }}>
+                             (Contract Joined)
+                           </span>
+                        )}
                       </div>
                     </>
                   )

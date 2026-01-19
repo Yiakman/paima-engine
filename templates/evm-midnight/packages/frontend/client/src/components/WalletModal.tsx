@@ -1,8 +1,8 @@
 import { useWallet } from "../contexts/WalletContext.tsx";
-import { WalletMode } from "@paimaexample/wallets";
 import { LocalWallet } from "@thirdweb-dev/wallets";
 import { getChainByChainIdAsync } from "@thirdweb-dev/chains";
 import { paimaEngineConfig } from "../PaimaEngineConfig.ts";
+import { RPC_ARBITRUM } from "../config.ts";
 
 interface WalletModalProps {
   onClose: () => void;
@@ -10,9 +10,18 @@ interface WalletModalProps {
 
 async function getLocalWallet() {
   const chain = await getChainByChainIdAsync(paimaEngineConfig.paimaL2Chain.id);
-  chain.rpc = ["http://127.0.0.1:8545"];
-  chain.explorers = [];
-  chain.name = "Local Hardhat";
+  const isTestnet = (import.meta.env as any).MODE === "testnet" || (import.meta.env as any).VITE_MODE === "testnet";
+  
+  if (isTestnet) {
+    chain.rpc = [RPC_ARBITRUM];
+    chain.explorers = [];
+    chain.name = "Arbitrum Sepolia";
+  } else {
+    chain.rpc = ["http://127.0.0.1:8545"];
+    chain.explorers = [];
+    chain.name = "Local Hardhat";
+  }
+  
   const wallet = new LocalWallet({ chain });
   // We will load a wallet that has preloaded funds.
   // DO NOT EVER USE THIS KEY IN PRODUCTION.
@@ -30,12 +39,12 @@ async function getLocalWallet() {
 export function WalletModal({ onClose }: WalletModalProps) {
   const { connectEvmWallet } = useWallet();
 
-  const handleConnect = async (mode: WalletMode) => {
+  const handleConnect = async (mode: number) => {
     try {
-      if (mode === WalletMode.EvmEthers) {
+      if (mode === 1) {
         const localWallet = await getLocalWallet();
         await connectEvmWallet({
-          mode: WalletMode.EvmEthers,
+          mode: 1,
           connection: {
             metadata: {
               name: "thirdweb.localwallet",
@@ -43,6 +52,12 @@ export function WalletModal({ onClose }: WalletModalProps) {
             },
             api: localWallet,
           },
+        });
+      } else if (mode === 2) {
+        const isTestnet = (import.meta.env as any).MODE === "testnet" || (import.meta.env as any).VITE_MODE === "testnet";
+        await connectEvmWallet({
+          mode: 2,
+          networkId: isTestnet ? "testnet" : "mainnet",
         });
       } else {
         const loginInfo /*: LoginInfo*/ = {
@@ -70,13 +85,13 @@ export function WalletModal({ onClose }: WalletModalProps) {
         </p>
         <div className="wallet-options">
           <button
-            onClick={() => handleConnect(WalletMode.EvmInjected)}
+            onClick={() => handleConnect(0)}
             className="wallet-option-button metamask"
           >
             Connect Browser Wallet (MetaMask)
           </button>
           <button
-            onClick={() => handleConnect(WalletMode.EvmEthers)}
+            onClick={() => handleConnect(1)}
             className="wallet-option-button local-wallet"
           >
             Connect Local Wallet

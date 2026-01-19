@@ -26,6 +26,7 @@ const indexerWsBase = midnightNetworkConfig.indexerWS.replace(
 );
 
 const frontendEnv = {
+  VITE_MODE: "testnet",
   VITE_MIDNIGHT_NETWORK_ID: midnightNetworkConfig.id,
   VITE_MIDNIGHT_INDEXER_HTTP: indexerBase,
   VITE_MIDNIGHT_INDEXER_WS: indexerWsBase,

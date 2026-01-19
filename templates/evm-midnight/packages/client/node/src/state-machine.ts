@@ -10,6 +10,9 @@ import type { StartConfigGameStateTransitions } from "@paimaexample/runtime";
 import { type SyncStateUpdateStream, World } from "@paimaexample/coroutine";
 import { contractAddressesEvmMain } from "@example-evm-midnight/evm-contracts";
 
+const isTestnet = Deno ? Deno.env.get("EFFECTSTREAM_ENV") === "testnet" : false;
+const chainKey = isTestnet ? "chain421614" : "chain31337";
+
 const stm = new PaimaSTM<typeof grammar, any>(grammar);
 
 const decodeString = (x: { [key: string]: number }): string => 
@@ -94,7 +97,7 @@ stm.addStateTransition(
     console.log(JSON.stringify(data.parsedInput, null, 2));
     const { to, tokenId }: any = data.parsedInput;
     const contract_address =
-      contractAddressesEvmMain().chain31337["Erc721DevModule#Erc721Dev"];
+      (contractAddressesEvmMain() as any)[chainKey]["Erc721DevModule#Erc721Dev"];
     console.log("🎉 [TRANSFER-ASSETS] Contract address:", contract_address);
     yield* World.resolve(insertEvmMidnight, {
       contract_address,
